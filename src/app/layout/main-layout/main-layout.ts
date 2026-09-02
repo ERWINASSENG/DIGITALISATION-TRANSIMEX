@@ -1,11 +1,20 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { NavMenuItem, ROLE_DEFINITIONS } from '../../core/models/auth.model';
+import { MatIconModule } from '@angular/material/icon';
+import { ROLE_DEFINITIONS, UserRole } from '../../core/models/auth.model';
 import { AuthService } from '../../core/services/auth.service';
+
+export interface SidebarNavOption {
+  id: string;
+  label: string;
+  route: string;
+  icon: string;
+  allowedRoles: UserRole[];
+}
 
 @Component({
   selector: 'app-main-layout',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatIconModule],
   templateUrl: './main-layout.html',
   styleUrl: './main-layout.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -15,52 +24,51 @@ export class MainLayout {
 
   public readonly currentUser = this.authService.currentUser;
   public readonly isSidebarOpen = signal<boolean>(false);
-  public readonly isUserMenuOpen = signal<boolean>(false);
 
-  // Éléments de navigation épurés sans icônes
-  private readonly allMenuItems: NavMenuItem[] = [
+  // Menu de navigation principal Transimex avec contrôle d'accès RBAC
+  private readonly allMenuItems: SidebarNavOption[] = [
     {
       id: 'nav-dashboard',
-      label: 'Tableau de Bord',
+      label: 'Tableau de bord',
       route: '/dashboard',
+      icon: 'grid_view',
       allowedRoles: ['admin', 'rh', 'manager_stock', 'caissier', 'agent'],
     },
     {
-      id: 'nav-users',
-      label: 'Gestion Utilisateurs & Rôles',
-      route: '/admin/users',
-      allowedRoles: ['admin'],
-      badge: 'Admin',
-      badgeVariant: 'primary',
+      id: 'nav-hr',
+      label: 'Ressources humaines',
+      route: '/hr',
+      icon: 'group',
+      allowedRoles: ['admin', 'rh'],
     },
     {
-      id: 'nav-hr',
-      label: 'RH & Collaborateurs',
-      route: '/hr',
-      allowedRoles: ['admin', 'rh'],
-      badge: 'Équipe',
-      badgeVariant: 'success',
+      id: 'nav-users',
+      label: 'Utilisateurs & Rôles',
+      route: '/admin/users',
+      icon: 'manage_accounts',
+      allowedRoles: ['admin'],
     },
     {
       id: 'nav-profile',
-      label: 'Mon Profil & Sécurité',
+      label: 'Mon Profil',
       route: '/profile',
+      icon: 'account_circle',
       allowedRoles: ['admin', 'rh', 'manager_stock', 'caissier', 'agent'],
     },
   ];
 
-  // Filtrage dynamique des menus selon le rôle actif de l'utilisateur connecté
-  public readonly visibleMenuItems = computed<NavMenuItem[]>(() => {
+  // Filtrage dynamique selon le rôle de l'utilisateur connecté
+  public readonly visibleMenuItems = computed<SidebarNavOption[]>(() => {
     const user = this.currentUser();
     if (!user) return [];
     if (user.role === 'admin') return this.allMenuItems;
     return this.allMenuItems.filter((item) => item.allowedRoles.includes(user.role));
   });
 
-  public readonly currentRoleDefinition = computed(() => {
-    const role = this.currentUser()?.role;
-    return role ? ROLE_DEFINITIONS[role] : null;
-  });
+  public roleLabel(role?: UserRole): string {
+    if (!role) return 'Utilisateur';
+    return ROLE_DEFINITIONS[role]?.label || role;
+  }
 
   public toggleSidebar(): void {
     this.isSidebarOpen.update((v) => !v);
@@ -70,16 +78,7 @@ export class MainLayout {
     this.isSidebarOpen.set(false);
   }
 
-  public toggleUserMenu(): void {
-    this.isUserMenuOpen.update((v) => !v);
-  }
-
-  public closeUserMenu(): void {
-    this.isUserMenuOpen.set(false);
-  }
-
   public async logout(): Promise<void> {
-    this.closeUserMenu();
     await this.authService.logout();
   }
 }

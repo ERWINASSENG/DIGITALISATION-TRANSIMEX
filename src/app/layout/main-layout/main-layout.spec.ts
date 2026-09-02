@@ -1,21 +1,38 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
 import { MainLayout } from './main-layout';
 import { AuthService } from '../../core/services/auth.service';
 import { SupabaseService } from '../../core/services/supabase.service';
+import { UserProfile } from '../../core/models/auth.model';
 
 describe('MainLayout Component', () => {
   let component: MainLayout;
+  const mockUser: UserProfile = {
+    id: 'test-admin',
+    email: 'admin@transmex.com',
+    firstName: 'Amine',
+    lastName: 'Admin',
+    role: 'admin',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  };
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [MainLayout],
       providers: [
         provideRouter([]),
-        AuthService,
+        {
+          provide: AuthService,
+          useValue: {
+            currentUser: signal<UserProfile | null>(mockUser),
+            logout: vi.fn(),
+          },
+        },
         {
           provide: SupabaseService,
-          useValue: { isConfigured: false, supabase: null },
+          useValue: { isConfigured: () => false, supabase: null },
         },
       ],
     });
@@ -44,3 +61,4 @@ describe('MainLayout Component', () => {
     expect(component.isSidebarOpen()).toBe(false);
   });
 });
+

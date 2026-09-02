@@ -39,7 +39,7 @@ export class UserService {
     this._error.set(null);
 
     try {
-      if (this.supabaseService.isConfigured && this.supabaseService.supabase) {
+      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
         const { data, error } = await this.supabaseService.supabase
           .from('profiles')
           .select('*')
@@ -71,14 +71,27 @@ export class UserService {
         }
       }
 
-      // Mode Local / Persistance locale
+      // Mode Local / Persistance locale : ne conserver que les utilisateurs réels
       if (this.isBrowser) {
         const stored = localStorage.getItem(USERS_STORAGE_KEY);
         if (stored) {
-          const parsed: UserProfile[] = JSON.parse(stored);
-          this._users.set(parsed);
-          this._isLoading.set(false);
-          return;
+          try {
+            const parsed: UserProfile[] = JSON.parse(stored);
+            // Filtrer pour éliminer automatiquement tout ancien compte de démo résiduel
+            const demoEmails = ['admin@transmex.com', 'rh@transmex.com', 'stock@transmex.com', 'caisse@transmex.com', 'agent@transmex.com'];
+            const cleanList = parsed.filter((u) => !demoEmails.includes(u.email.toLowerCase()));
+            
+            // Si des faux comptes étaient présents, réécrire le stockage propre
+            if (cleanList.length !== parsed.length) {
+              this.saveToStorage(cleanList);
+            }
+            
+            this._users.set(cleanList);
+            this._isLoading.set(false);
+            return;
+          } catch {
+            this.clearAllUsers();
+          }
         }
       }
 
@@ -124,7 +137,7 @@ export class UserService {
       };
 
       // Si Supabase est actif, enregistrer dans la table profiles
-      if (this.supabaseService.isConfigured && this.supabaseService.supabase) {
+      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
         await this.supabaseService.supabase.from('profiles').insert({
           id: newId,
           email: newUser.email,
@@ -160,7 +173,7 @@ export class UserService {
     this._error.set(null);
 
     try {
-      if (this.supabaseService.isConfigured && this.supabaseService.supabase) {
+      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
         const updateData: Record<string, unknown> = {};
         if (payload.firstName !== undefined) updateData['first_name'] = payload.firstName;
         if (payload.lastName !== undefined) updateData['last_name'] = payload.lastName;
@@ -218,7 +231,7 @@ export class UserService {
   public async deleteUser(id: string): Promise<{ success: boolean; error?: string }> {
     this._isLoading.set(true);
     try {
-      if (this.supabaseService.isConfigured && this.supabaseService.supabase) {
+      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
         await this.supabaseService.supabase.from('profiles').delete().eq('id', id);
       }
 

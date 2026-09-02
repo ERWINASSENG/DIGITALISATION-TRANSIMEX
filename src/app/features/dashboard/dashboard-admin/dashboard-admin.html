@@ -1,0 +1,186 @@
+<div class="space-y-6" id="dashboard-admin-view">
+  <!-- En-tête de bienvenue Administrateur -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs" id="admin-header-card">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-0.5 text-[11px] font-bold tracking-wider uppercase bg-blue-50 text-[#1e3a8a] rounded-md border border-blue-200/60">
+          Vue Direction Générale
+        </span>
+        <span class="text-xs text-slate-400">•</span>
+        <span class="text-xs text-slate-500 font-medium">TRANSIMEX Siège</span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900 mt-1.5">
+        Tableau de bord Administrateur
+      </h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Supervision globale des opérations, des finances consolidées et de l'administration du personnel.
+      </p>
+    </div>
+
+    <div class="flex items-center gap-3 shrink-0">
+      <a
+        routerLink="/admin/users"
+        class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
+        id="admin-btn-users">
+        <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center text-slate-500">group</mat-icon>
+        <span>Gérer Utilisateurs</span>
+      </a>
+
+      <a
+        routerLink="/dashboard"
+        class="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1e3a8a] hover:bg-blue-900 text-white text-xs font-semibold rounded-xl transition-colors shadow-xs"
+        id="admin-btn-caisse">
+        <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center">account_balance_wallet</mat-icon>
+        <span>Consulter Caisses</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Cartes KPIs Administrateur (4 Métriques stratégiques) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="admin-kpis-grid">
+    
+    <!-- KPI 1 : Trésorerie Globale -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors" id="kpi-admin-treasury">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Trésorerie Globale</p>
+          <p class="text-xl font-bold text-slate-900 mt-1">{{ formatCurrency(stats().totalTreasury) }}</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">account_balance</mat-icon>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">trending_up</mat-icon>
+        <span>+12.4% vs mois précédent</span>
+      </div>
+    </div>
+
+    <!-- KPI 2 : Effectif Actif -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors" id="kpi-admin-employees">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Effectif Actif</p>
+          <p class="text-xl font-bold text-slate-900 mt-1">{{ stats().totalEmployees }} Collaborateurs</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-[#1e3a8a] flex items-center justify-center shrink-0">
+          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">badge</mat-icon>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-1.5 text-[11px] text-slate-500">
+        <span class="font-medium text-slate-800">4 départements</span>
+        <span>• 100% opérationnels</span>
+      </div>
+    </div>
+
+    <!-- KPI 3 : Comptes Utilisateurs & Sécurité -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors" id="kpi-admin-users">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Accès Système</p>
+          <p class="text-xl font-bold text-slate-900 mt-1">{{ stats().activeAccounts }} Comptes Actifs</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">shield</mat-icon>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">check_circle</mat-icon>
+        <span>Sécurité RLS & Auth Supabase OK</span>
+      </div>
+    </div>
+
+    <!-- KPI 4 : Opérations du Jour -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors" id="kpi-admin-ops">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Flux Journaliers</p>
+          <p class="text-xl font-bold text-slate-900 mt-1">{{ stats().dailyOpsCount }} Transactions</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">sync_alt</mat-icon>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-1.5 text-[11px] text-amber-700 font-medium">
+        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">pending</mat-icon>
+        <span>{{ stats().pendingApprovals }} en attente d'approbation</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2 Colonnes : Répartition Financière & Activités Critiques -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="admin-main-sections">
+    
+    <!-- Colonne Gauche (2/3) : Synthèse des flux par Département & Caisses -->
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs" id="admin-agency-performance">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">Activité par Pôle Opérationnel</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Suivi en temps réel des flux de trésorerie et dépenses</p>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg">Mois en cours</span>
+        </div>
+
+        <div class="mt-5 space-y-4">
+          @for (dept of departments(); track dept.name) {
+            <div class="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+              <div class="flex items-center justify-between text-xs font-semibold text-slate-800">
+                <span>{{ dept.name }}</span>
+                <span>{{ formatCurrency(dept.amount) }} ({{ dept.percentage }}%)</span>
+              </div>
+              <!-- Barre de progression -->
+              <div class="w-full h-2 bg-slate-200/70 rounded-full overflow-hidden mt-2">
+                <div 
+                  class="h-full rounded-full transition-all duration-500"
+                  [style.width.%]="dept.percentage"
+                  [class.bg-[#1e3a8a]]="dept.color === 'blue'"
+                  [class.bg-emerald-600]="dept.color === 'emerald'"
+                  [class.bg-amber-500]="dept.color === 'amber'"
+                  [class.bg-purple-600]="dept.color === 'purple'">
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne Droite (1/3) : Journal d'Audit & Activités Système -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between" id="admin-audit-log">
+      <div>
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <h2 class="text-base font-bold text-slate-900">Journal d'Audit</h2>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Système en direct"></span>
+        </div>
+
+        <div class="mt-4 space-y-3.5">
+          @for (log of auditLogs(); track log.id) {
+            <div class="flex items-start gap-3 text-xs">
+              <div class="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 mt-0.5 text-slate-600">
+                <mat-icon class="text-[16px] w-4 h-4 flex items-center justify-center">{{ log.icon }}</mat-icon>
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-slate-800 leading-snug">{{ log.description }}</p>
+                <div class="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                  <span class="font-semibold text-slate-600">{{ log.user }}</span>
+                  <span>•</span>
+                  <span>{{ log.time }}</span>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-slate-100 mt-6">
+        <a 
+          routerLink="/hr"
+          class="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold text-[#1e3a8a] bg-blue-50/70 hover:bg-blue-50 rounded-xl transition-colors">
+          <span>Consulter le registre RH complet</span>
+          <mat-icon class="text-[16px] w-4 h-4 flex items-center justify-center">arrow_forward</mat-icon>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

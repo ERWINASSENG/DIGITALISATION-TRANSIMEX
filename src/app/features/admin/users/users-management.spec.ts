@@ -30,7 +30,7 @@ describe('UsersManagement Component', () => {
   it('devrait ouvrir le modal de création d\'utilisateur', () => {
     component.openCreateModal();
     expect(component.isModalOpen()).toBe(true);
-    expect(component.editingUser()).toBeNull();
+    expect(component.editingUserId()).toBeNull();
   });
 
   it('devrait filtrer les utilisateurs selon la recherche textuelle', () => {

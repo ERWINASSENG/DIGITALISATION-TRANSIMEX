@@ -29,7 +29,10 @@ const angularApp = new AngularNodeAppEngine();
  */
 app.use(
   express.static(browserDistFolder, {
-    maxAge: '1y',
+    maxAge: process.env['NODE_ENV'] === 'production' ? '1y' : '0',
+    setHeaders: (res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    },
     index: false,
     redirect: false,
   }),

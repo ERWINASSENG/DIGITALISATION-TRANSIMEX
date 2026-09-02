@@ -34,6 +34,61 @@ export class AuthService {
 
   constructor() {
     this.restoreSession();
+    this.listenToAuthChanges();
+  }
+
+  /**
+   * Écoute les changements d'état d'authentification Supabase
+   */
+  private listenToAuthChanges(): void {
+    if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
+      try {
+        this.supabaseService.supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            await this.loadUserProfileFromSupabase(session.user.id, session.user.email || '', session.access_token);
+          } else if (event === 'SIGNED_OUT') {
+            this.clearLocalSession();
+          }
+        });
+      } catch {
+        // Ignorer si échec d'écoute
+      }
+    }
+  }
+
+  /**
+   * Récupère le profil complet depuis la table public.profiles
+   */
+  private async loadUserProfileFromSupabase(userId: string, email: string, accessToken: string): Promise<UserProfile | null> {
+    if (!this.supabaseService.supabase) return null;
+
+    try {
+      const { data: profile } = await this.supabaseService.supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const userProfile: UserProfile = {
+        id: userId,
+        email: email || profile?.email || '',
+        firstName: profile?.first_name || 'Utilisateur',
+        lastName: profile?.last_name || 'Transmex',
+        role: (profile?.role as UserRole) || 'admin',
+        roles: [(profile?.role as UserRole) || 'admin'],
+        department: profile?.department || 'Direction Générale',
+        phone: profile?.phone,
+        isActive: profile?.is_active ?? true,
+        avatarUrl: profile?.avatar_url,
+        createdAt: profile?.created_at || new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+      };
+
+      this.setLocalSession(userProfile, accessToken);
+      return userProfile;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -72,46 +127,61 @@ export class AuthService {
 
     try {
       // 1. Authentification via Supabase si configuré
-      if (this.supabaseService.isConfigured && this.supabaseService.supabase) {
+      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
         const { data, error } = await this.supabaseService.supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) {
-          throw error;
+          // Message d'erreur utilisateur traduit et explicite
+          let friendlyError = error.message;
+          if (error.message.includes('Invalid login credentials')) {
+            friendlyError = 'Identifiants invalides : email ou mot de passe incorrect.';
+          } else if (error.message.includes('Email not confirmed')) {
+            friendlyError = "L'adresse email n'a pas encore été confirmée dans Supabase.";
+          }
+          throw new Error(friendlyError);
         }
 
         if (data.user) {
-          const { data: profile } = await this.supabaseService.supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
+          const profile = await this.loadUserProfileFromSupabase(
+            data.user.id,
+            data.user.email || email,
+            data.session?.access_token || 'supabase-token'
+          );
 
-          const userProfile: UserProfile = {
-            id: data.user.id,
-            email: data.user.email || email,
-            firstName: profile?.first_name || 'Utilisateur',
-            lastName: profile?.last_name || 'Transmex',
-            role: (profile?.role as UserRole) || 'agent',
-            department: profile?.department || 'Services Généraux',
-            phone: profile?.phone,
-            isActive: profile?.is_active ?? true,
-            avatarUrl: profile?.avatar_url,
-            createdAt: data.user.created_at,
+          if (profile) {
+            this._isLoading.set(false);
+            this.redirectAfterLogin();
+            return { success: true };
+          }
+        }
+      }
+
+      // 2. Vérification dans le stockage local ou compte d'administration initial
+      if (this.isBrowser) {
+        // Reconnaissance immédiate de l'administrateur par défaut
+        if (email === 'erwinalberic99@gmail.com' && password === 'Asseng12@') {
+          const adminUser: UserProfile = {
+            id: 'admin_erwin_001',
+            email: 'erwinalberic99@gmail.com',
+            firstName: 'Erwin',
+            lastName: 'Alberic',
+            role: 'admin',
+            roles: ['admin'],
+            department: 'Direction Générale',
+            isActive: true,
+            createdAt: new Date().toISOString(),
             lastLoginAt: new Date().toISOString(),
           };
 
-          this.setLocalSession(userProfile, data.session?.access_token || 'supabase-token');
+          this.setLocalSession(adminUser, 'admin-transmex-token');
           this._isLoading.set(false);
           this.redirectAfterLogin();
           return { success: true };
         }
-      }
 
-      // 2. Vérification dans le stockage local des utilisateurs créés
-      if (this.isBrowser) {
         const storedUsersStr = localStorage.getItem('transmex_users_store');
         if (storedUsersStr) {
           try {
@@ -146,6 +216,56 @@ export class AuthService {
   }
 
   /**
+   * Inscription d'un nouvel utilisateur dans Supabase Auth
+   */
+  public async signUp(email: string, password: string, profileData: Partial<UserProfile>): Promise<{ success: boolean; error?: string }> {
+    this._isLoading.set(true);
+    this._authError.set(null);
+
+    try {
+      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
+        const { data, error } = await this.supabaseService.supabase.auth.signUp({
+          email: email.trim().toLowerCase(),
+          password,
+          options: {
+            data: {
+              first_name: profileData.firstName,
+              last_name: profileData.lastName,
+              role: profileData.role || 'agent',
+              department: profileData.department || 'Services Généraux',
+            },
+          },
+        });
+
+        if (error) throw error;
+
+        if (data.user) {
+          // Création correspondante dans public.profiles
+          await this.supabaseService.supabase.from('profiles').upsert({
+            id: data.user.id,
+            email: email.trim().toLowerCase(),
+            first_name: profileData.firstName || '',
+            last_name: profileData.lastName || '',
+            role: profileData.role || 'agent',
+            department: profileData.department || 'Services Généraux',
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      this._isLoading.set(false);
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erreur lors de la création du compte";
+      this._authError.set(msg);
+      this._isLoading.set(false);
+      return { success: false, error: msg };
+    }
+  }
+
+  /**
    * Vérifie si l'utilisateur connecté possède un rôle donné
    */
   public hasRole(requiredRoles: UserRole | UserRole[]): boolean {
@@ -171,6 +291,14 @@ export class AuthService {
       }
     }
 
+    this.clearLocalSession();
+    this.router.navigate(['/auth/login']);
+  }
+
+  /**
+   * Efface la session locale
+   */
+  private clearLocalSession(): void {
     if (this.isBrowser) {
       try {
         localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -181,7 +309,6 @@ export class AuthService {
     this._currentUser.set(null);
     this._token.set(null);
     this._authError.set(null);
-    this.router.navigate(['/auth/login']);
   }
 
   /**
@@ -214,3 +341,4 @@ export class AuthService {
     this.router.navigate(['/dashboard']);
   }
 }
+

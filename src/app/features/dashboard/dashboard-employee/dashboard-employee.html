@@ -1,0 +1,207 @@
+<div class="space-y-6" id="dashboard-employee-view">
+  <!-- En-tête Employé / Collaborateur -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs" id="employee-header-card">
+    <div>
+      <div class="flex items-center gap-2">
+        <span class="px-2.5 py-0.5 text-[11px] font-bold tracking-wider uppercase bg-slate-100 text-slate-800 rounded-md border border-slate-200/60">
+          Espace Collaborateur
+        </span>
+        <span class="text-xs text-slate-400">•</span>
+        <span class="text-xs text-slate-500 font-medium">TRANSIMEX Opérations</span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900 mt-1.5">
+        Bonjour, {{ currentUser()?.firstName }} {{ currentUser()?.lastName }}
+      </h1>
+      <p class="text-sm text-slate-500 mt-0.5">
+        Retrouvez vos tâches quotidiennes, votre planning de présence et le suivi de vos demandes.
+      </p>
+    </div>
+
+    <!-- Statut Pointage & Raccourcis -->
+    <div class="flex items-center gap-3 shrink-0">
+      <div class="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-emerald-50 border border-emerald-200/80 rounded-xl text-xs font-semibold text-emerald-800">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>Pointage : En poste (depuis 07:45)</span>
+      </div>
+
+      <a
+        routerLink="/profile"
+        class="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1e3a8a] hover:bg-blue-900 text-white text-xs font-semibold rounded-xl transition-colors shadow-xs"
+        id="employee-btn-profile">
+        <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center">person</mat-icon>
+        <span>Mon Profil</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Cartes KPIs Collaborateur (4 Métriques personnelles) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" id="employee-kpis-grid">
+    
+    <!-- KPI 1 : Tâches Assignées -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors" id="kpi-employee-tasks">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Missions du Jour</p>
+          <p class="text-2xl font-bold text-slate-900 mt-1">{{ remainingTasksCount() }} Restantes</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-[#1e3a8a] flex items-center justify-center shrink-0">
+          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">checklist</mat-icon>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-1.5 text-[11px] text-slate-500">
+        <span class="font-medium text-slate-800">{{ completedTasksCount() }} terminées</span>
+        <span>sur {{ tasks().length }} au total</span>
+      </div>
+    </div>
+
+    <!-- KPI 2 : Solde Congés -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors" id="kpi-employee-leaves">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Solde Congés Payés</p>
+          <p class="text-2xl font-bold text-emerald-700 mt-1">18 Jours</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">beach_access</mat-icon>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
+        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">event_available</mat-icon>
+        <span>Droits acquis pour 2026</span>
+      </div>
+    </div>
+
+    <!-- KPI 3 : Demandes en cours -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors" id="kpi-employee-requests">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Demandes en Cours</p>
+          <p class="text-2xl font-bold text-amber-600 mt-1">2 Dossiers</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">hourglass_top</mat-icon>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-1.5 text-[11px] text-amber-700 font-medium">
+        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">schedule</mat-icon>
+        <span>En cours de validation hiérarchique</span>
+      </div>
+    </div>
+
+    <!-- KPI 4 : Présence du Mois -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:border-slate-300 transition-colors" id="kpi-employee-attendance">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">Assiduité Mensuelle</p>
+          <p class="text-2xl font-bold text-purple-700 mt-1">100%</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">verified_user</mat-icon>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center gap-1.5 text-[11px] text-purple-700 font-medium">
+        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">star</mat-icon>
+        <span>0 retard constaté ce mois</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sections : Mes Missions du Jour & Suivi des Demandes -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="employee-sections-grid">
+    
+    <!-- Colonne Gauche (2/3) : Checklist des Missions & Tâches -->
+    <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4" id="employee-tasks-panel">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Missions & Activités Quotidiennes</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Cochez vos tâches au fur et à mesure de leur réalisation</p>
+        </div>
+        <span class="text-xs font-bold px-2.5 py-1 bg-blue-50 text-[#1e3a8a] rounded-lg">
+          {{ completedTasksCount() }}/{{ tasks().length }} faites
+        </span>
+      </div>
+
+      <div class="space-y-2.5">
+        @for (task of tasks(); track task.id) {
+          <div 
+            class="flex items-center justify-between p-3.5 rounded-xl border border-slate-200/70 hover:bg-slate-50/70 transition-colors select-none">
+            <div class="flex items-center gap-3">
+              <button 
+                type="button" 
+                (click)="toggleTask(task.id)"
+                [attr.aria-label]="task.completed ? 'Marquer comme non terminée' : 'Marquer comme terminée'"
+                class="w-5 h-5 rounded-md border flex items-center justify-center transition-colors cursor-pointer"
+                [class.bg-emerald-600]="task.completed"
+                [class.border-emerald-600]="task.completed"
+                [class.border-slate-300]="!task.completed"
+                [class.bg-white]="!task.completed">
+                @if (task.completed) {
+                  <mat-icon class="text-white text-[16px] w-4 h-4 flex items-center justify-center">check</mat-icon>
+                }
+              </button>
+              <div>
+                <p 
+                  class="text-xs font-semibold text-slate-900"
+                  [class.line-through]="task.completed"
+                  [class.text-slate-400]="task.completed">
+                  {{ task.title }}
+                </p>
+                <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                  <span class="font-medium text-slate-600">{{ task.category }}</span>
+                  <span>•</span>
+                  <span>Échéance : {{ task.dueTime }}</span>
+                </div>
+              </div>
+            </div>
+
+            <span 
+              class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md"
+              [class.bg-red-50]="task.priority === 'haute' && !task.completed"
+              [class.text-red-700]="task.priority === 'haute' && !task.completed"
+              [class.bg-slate-100]="task.priority !== 'haute' || task.completed"
+              [class.text-slate-600]="task.priority !== 'haute' || task.completed">
+              {{ task.priority }}
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Colonne Droite (1/3) : Mes Demandes & Raccourcis Utiles -->
+    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4" id="employee-my-requests-panel">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+        <h2 class="text-base font-bold text-slate-900">Mes Demandes</h2>
+        <span class="text-xs font-medium text-slate-400">Statut</span>
+      </div>
+
+      <div class="space-y-3">
+        @for (item of myRequests(); track item.id) {
+          <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col gap-1 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-800">{{ item.title }}</span>
+              <span 
+                class="text-[10px] font-bold px-2 py-0.5 rounded-md"
+                [class.bg-emerald-50]="item.status === 'validé'"
+                [class.text-emerald-700]="item.status === 'validé'"
+                [class.bg-amber-50]="item.status === 'en attente'"
+                [class.text-amber-700]="item.status === 'en attente'">
+                {{ item.status }}
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500">{{ item.detail }}</p>
+            <span class="text-[10px] text-slate-400 mt-1">Déposée le {{ item.date }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="pt-4 border-t border-slate-100">
+        <a 
+          routerLink="/profile" 
+          class="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-semibold text-[#1e3a8a] bg-blue-50/70 hover:bg-blue-50 rounded-xl transition-colors">
+          <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center">folder_shared</mat-icon>
+          <span>Accéder à mes documents RH</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

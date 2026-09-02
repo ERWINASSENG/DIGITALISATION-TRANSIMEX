@@ -12,115 +12,136 @@
     </button>
   }
 
-  <!-- SIDEBAR TRANSMEX -->
+  <!-- SIDEBAR TRANSIMEX EXACTE (Fidèle à la maquette) -->
   <aside 
-    class="fixed md:sticky top-0 left-0 z-50 h-screen w-72 bg-slate-900 text-white flex flex-col justify-between transition-transform duration-300 ease-in-out border-r border-slate-800 shrink-0"
+    class="fixed md:sticky top-0 left-0 z-50 h-screen w-64 bg-white border-r border-slate-200/90 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 select-none md:translate-x-0 overflow-y-auto"
     [class.-translate-x-full]="!isSidebarOpen()"
     [class.translate-x-0]="isSidebarOpen()"
-    [class.md:translate-x-0]="true"
     id="app-sidebar">
 
-    <!-- Top Branding -->
-    <div>
-      <div class="h-18 px-6 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/40">
-        <div>
-          <h2 class="text-base font-bold tracking-wider text-white uppercase">TRANSMEX</h2>
-          <p class="text-[11px] text-slate-400 font-medium">Portail de Gestion Interne</p>
+    <!-- Haut : Logo Transimex & Liens de Navigation -->
+    <div class="flex flex-col">
+      <!-- En-tête Logo selon maquette -->
+      <div class="pt-8 pb-7 px-6 flex flex-col items-center justify-center border-b border-slate-100/80" id="sidebar-logo-container">
+        <div class="flex flex-col items-center">
+          <h1 class="text-[32px] font-serif font-black tracking-wide text-[#1e3a8a] leading-none uppercase">
+            TRANSIMEX
+          </h1>
+          <div class="w-full h-[1.5px] bg-[#1e3a8a] mt-2 mb-1.5 opacity-90"></div>
+          <span class="text-[10px] font-bold tracking-wider text-[#b91c1c] uppercase font-sans">
+            Global Logistics Provider
+          </span>
         </div>
-
-        <button 
-          type="button" 
-          (click)="closeSidebar()"
-          class="md:hidden text-xs text-slate-400 hover:text-white px-2 py-1 rounded-lg border border-slate-700"
-          id="close-sidebar-mobile-btn">
-          Fermer
-        </button>
       </div>
 
-      <!-- User Preview Badge -->
-      @if (currentUser(); as user) {
-        <div class="p-4 mx-3 my-4 bg-slate-800/60 border border-slate-700/60 rounded-xl" id="sidebar-user-card">
-          <p class="text-xs font-semibold text-white truncate">{{ user.firstName }} {{ user.lastName }}</p>
-          <div class="flex items-center gap-2 mt-1">
-            <span class="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span class="text-[11px] font-medium text-slate-300 capitalize truncate">
-              {{ currentRoleDefinition()?.label || user.role }}
-            </span>
-          </div>
-        </div>
-      }
-
-      <!-- Menu Items Filtered by RBAC -->
-      <nav class="px-3 space-y-1.5" id="sidebar-nav-menu">
-        <div class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          Navigation
-        </div>
-
+      <!-- Liens de navigation avec icônes fines -->
+      <nav class="px-3 py-6 space-y-1" id="sidebar-nav-menu">
         @for (item of visibleMenuItems(); track item.id) {
           <a
             [routerLink]="item.route"
-            routerLinkActive="bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/20"
+            routerLinkActive="bg-slate-100/90 text-[#1e3a8a] font-semibold"
             [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
             (click)="closeSidebar()"
-            class="flex items-center justify-between px-4 py-3 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
+            class="flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors group"
             [id]="item.id">
-            <span>{{ item.label }}</span>
-
-            @if (item.badge) {
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                {{ item.badge }}
-              </span>
-            }
+            <mat-icon class="text-slate-500 group-hover:text-slate-800 text-[21px] w-5.5 h-5.5 flex items-center justify-center shrink-0">
+              {{ item.icon }}
+            </mat-icon>
+            <span class="truncate">{{ item.label }}</span>
           </a>
         }
       </nav>
     </div>
 
-    <!-- Bottom Actions -->
-    <div class="p-3 border-t border-slate-800 bg-slate-950/40">
+    <!-- Bas de Sidebar : Carte Utilisateur & Déconnexion -->
+    <div class="p-4 border-t border-slate-100/80 space-y-3 shrink-0" id="sidebar-bottom-container">
+      <!-- Carte Utilisateur (fond gris clair, avatar rond, nom, rôle, lien profil accessible) -->
+      @if (currentUser(); as user) {
+        <a 
+          routerLink="/profile"
+          (click)="closeSidebar()"
+          class="flex items-center justify-between p-2.5 bg-slate-100/70 hover:bg-slate-100 rounded-xl border border-slate-200/60 transition-all group"
+          id="sidebar-user-card"
+        >
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-full bg-slate-200 border border-white overflow-hidden shrink-0 flex items-center justify-center shadow-xs">
+              @if (user.avatarUrl) {
+                <img [src]="user.avatarUrl" alt="Avatar" class="w-full h-full object-cover" />
+              } @else {
+                <span class="text-slate-700 font-bold text-xs uppercase">
+                  {{ user.firstName.charAt(0) }}{{ user.lastName.charAt(0) }}
+                </span>
+              }
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-semibold text-slate-900 truncate leading-tight group-hover:text-[#1e3a8a]">
+                {{ user.firstName }} {{ user.lastName }}
+              </p>
+              <p class="text-[11px] text-slate-500 capitalize truncate mt-0.5">
+                {{ roleLabel(user.role) }}
+              </p>
+            </div>
+          </div>
+
+          <span
+            class="p-1 text-slate-400 group-hover:text-slate-700 rounded-lg group-hover:bg-slate-200/50 transition-colors shrink-0 flex items-center justify-center"
+            title="Accéder au profil"
+            id="sidebar-settings-icon-btn"
+          >
+            <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center">chevron_right</mat-icon>
+          </span>
+        </a>
+      }
+
+      <!-- Bouton Déconnexion raffiné et interactif -->
       <button
         type="button"
         (click)="logout()"
-        class="w-full py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-xs font-medium text-rose-300 hover:text-rose-200 transition-all text-center"
+        class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-red-100 bg-red-50/40 text-red-700 hover:bg-red-50 hover:text-red-800 hover:border-red-200 active:scale-[0.99] transition-all duration-200 shadow-2xs group focus:outline-hidden focus:ring-2 focus:ring-red-500/30"
         id="sidebar-logout-btn">
-        Déconnexion
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-red-100/60 group-hover:bg-red-200/70 text-red-600 flex items-center justify-center transition-colors">
+            <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center transition-transform duration-200 group-hover:translate-x-0.5">
+              logout
+            </mat-icon>
+          </div>
+          <span class="text-xs font-semibold tracking-wide">Déconnexion</span>
+        </div>
+
+        <span class="text-[10px] uppercase font-bold text-red-400 group-hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+          Quitter
+        </span>
       </button>
     </div>
   </aside>
 
   <!-- MAIN VIEWPORT -->
-  <div class="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+  <div class="flex-1 flex flex-col min-w-0 overflow-x-hidden min-h-screen">
     
-    <!-- Top Header Bar -->
-    <header class="h-18 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between shadow-xs">
+    <!-- Top Header Bar pour Mobile & Notifications -->
+    <header class="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between shadow-xs">
       <div class="flex items-center gap-3">
         <button
           type="button"
           (click)="toggleSidebar()"
-          class="md:hidden px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-medium"
+          class="md:hidden p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-medium flex items-center justify-center"
           id="toggle-mobile-sidebar-btn">
-          Menu
+          <mat-icon class="text-slate-600">menu</mat-icon>
         </button>
 
-        <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500">
-          <span class="font-bold text-slate-800 uppercase tracking-wider">Transmex</span>
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+          <span class="font-bold text-slate-800 uppercase tracking-wider">TRANSIMEX</span>
           <span>/</span>
-          <span class="text-indigo-600 font-medium">Portail Central</span>
+          <span class="text-[#1e3a8a] font-medium">Système de Gestion</span>
         </div>
       </div>
 
       <!-- Right Header Actions -->
       <div class="flex items-center gap-3">
-        @if (currentRoleDefinition(); as roleDef) {
-          <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs">
-            <span class="text-slate-500 font-medium">Rôle :</span>
-            <span class="font-bold text-slate-900 capitalize">{{ roleDef.label }}</span>
-          </div>
-        }
-
         @if (currentUser(); as user) {
-          <div class="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 font-semibold text-xs" id="header-avatar-circle">
-            {{ user.firstName }} {{ user.lastName }}
+          <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs">
+            <span class="text-slate-500 font-medium">Rôle :</span>
+            <span class="font-bold text-slate-900 capitalize">{{ roleLabel(user.role) }}</span>
           </div>
         }
       </div>
@@ -134,3 +155,4 @@
   </div>
 
 </div>
+
