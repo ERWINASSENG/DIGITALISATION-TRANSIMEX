@@ -10,7 +10,26 @@ describe('HrManagement Component', () => {
     TestBed.configureTestingModule({
       imports: [HrManagement],
       providers: [
-        UserService,
+        {
+          provide: UserService,
+          useValue: {
+            users: () => [
+              {
+                id: 'usr-1',
+                email: 'karim.meziani@transmex.com',
+                firstName: 'Karim',
+                lastName: 'Meziani',
+                role: 'admin',
+                department: 'Direction Générale',
+                phone: '+213 555 12 34 56',
+                isActive: true,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+            isLoading: () => false,
+            error: () => null,
+          },
+        },
         {
           provide: SupabaseService,
           useValue: { isConfigured: false, supabase: null },

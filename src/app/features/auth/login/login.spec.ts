@@ -34,9 +34,9 @@ describe('Login Component', () => {
     component = fixture.componentInstance;
   });
 
-  it('devrait être initialisé correctement avec des valeurs par défaut', () => {
+  it('devrait être initialisé correctement avec un formulaire vide par défaut', () => {
     expect(component).toBeTruthy();
-    expect(component.loginForm.valid).toBe(true);
+    expect(component.loginForm.valid).toBe(false);
   });
 
   it('devrait basculer la visibilité du mot de passe', () => {
@@ -46,6 +46,12 @@ describe('Login Component', () => {
   });
 
   it('devrait soumettre les identifiants quand le formulaire est valide', async () => {
+    component.loginForm.patchValue({
+      email: 'admin@transmex.com',
+      password: 'password123',
+      rememberMe: true,
+    });
+
     await component.onSubmit();
     expect(authServiceSpy.login).toHaveBeenCalledWith({
       email: 'admin@transmex.com',

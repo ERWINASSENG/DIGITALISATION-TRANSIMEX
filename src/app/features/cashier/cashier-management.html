@@ -1,0 +1,158 @@
+<div class="space-y-6">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200">
+    <div>
+      <h1 class="text-xl font-bold text-slate-900 tracking-tight">Gestion de Caisse</h1>
+      <p class="text-xs text-slate-500 mt-1">Suivi des encaissements, décaissements et état du solde en temps réel.</p>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  @if (successMessage()) {
+    <div class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-medium">
+      {{ successMessage() }}
+    </div>
+  }
+
+  <!-- KPIs Caisse -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+      <p class="text-xs font-medium text-slate-500">Solde Actuel en Caisse</p>
+      <p class="text-2xl font-bold text-slate-900 mt-1">{{ formatCurrency(currentBalance()) }}</p>
+      <p class="text-[11px] text-slate-500 mt-2">Disponibilité immédiate</p>
+    </div>
+
+    <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+      <p class="text-xs font-medium text-slate-500">Total Encaissements</p>
+      <p class="text-2xl font-bold text-emerald-700 mt-1">{{ formatCurrency(totalIn()) }}</p>
+      <p class="text-[11px] text-emerald-700 mt-2">Entrées cumulées</p>
+    </div>
+
+    <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+      <p class="text-xs font-medium text-slate-500">Total Décaissements</p>
+      <p class="text-2xl font-bold text-rose-700 mt-1">{{ formatCurrency(totalOut()) }}</p>
+      <p class="text-[11px] text-rose-700 mt-2">Sorties cumulées</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Formulaire d'enregistrement -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs h-fit">
+      <h2 class="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">Nouvelle Opération</h2>
+      
+      <form [formGroup]="transactionForm" (ngSubmit)="onSubmitTransaction()" class="mt-4 space-y-4">
+        <div>
+          <span class="block text-xs font-semibold text-slate-700 mb-1">Type d'opération</span>
+          <div class="grid grid-cols-2 gap-2">
+            <label for="type-encaissement" class="flex items-center justify-center p-2.5 border rounded-xl cursor-pointer text-xs font-medium text-slate-700 hover:bg-slate-50 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-300 has-[:checked]:text-emerald-800">
+              <input id="type-encaissement" type="radio" formControlName="type" value="encaissement" class="sr-only">
+              <span>Encaissement</span>
+            </label>
+            <label for="type-decaissement" class="flex items-center justify-center p-2.5 border rounded-xl cursor-pointer text-xs font-medium text-slate-700 hover:bg-slate-50 has-[:checked]:bg-rose-50 has-[:checked]:border-rose-300 has-[:checked]:text-rose-800">
+              <input id="type-decaissement" type="radio" formControlName="type" value="decaissement" class="sr-only">
+              <span>Décaissement</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label for="cashier-amount" class="block text-xs font-semibold text-slate-700 mb-1">Montant (FCFA / XOF)</label>
+          <input 
+            id="cashier-amount"
+            type="number" 
+            formControlName="amount" 
+            placeholder="ex: 50000" 
+            class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#1e3a8a] bg-slate-50/50">
+        </div>
+
+        <div>
+          <label for="cashier-category" class="block text-xs font-semibold text-slate-700 mb-1">Catégorie</label>
+          <select id="cashier-category" formControlName="category" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#1e3a8a] bg-slate-50/50">
+            <option value="Prestation">Prestation Client</option>
+            <option value="Vente">Vente Directe</option>
+            <option value="Fournitures">Fournitures & Bureau</option>
+            <option value="Transport">Transport & Logistique</option>
+            <option value="Divers">Autre / Divers</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="cashier-description" class="block text-xs font-semibold text-slate-700 mb-1">Motif / Libellé</label>
+          <textarea 
+            id="cashier-description"
+            formControlName="description" 
+            rows="3" 
+            placeholder="Préciser le motif de l'opération..." 
+            class="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:border-[#1e3a8a] bg-slate-50/50 resize-none"></textarea>
+        </div>
+
+        <button 
+          type="submit" 
+          [disabled]="isSubmitting() || transactionForm.invalid"
+          class="w-full py-2.5 bg-[#1e3a8a] hover:bg-blue-900 disabled:bg-slate-300 text-white text-xs font-semibold rounded-xl transition-colors shadow-xs">
+          @if (isSubmitting()) {
+            <span>Enregistrement en cours...</span>
+          } @else {
+            <span>Enregistrer l'opération</span>
+          }
+        </button>
+      </form>
+    </div>
+
+    <!-- Historique des mouvements -->
+    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900">Journal des Mouvements</h2>
+        <span class="text-xs text-slate-500 font-medium">{{ transactions().length }} opérations</span>
+      </div>
+
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-slate-100 text-slate-500 font-medium">
+              <th class="pb-2.5">Date & Heure</th>
+              <th class="pb-2.5">Type</th>
+              <th class="pb-2.5">Catégorie & Description</th>
+              <th class="pb-2.5 text-right">Montant</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            @for (tx of transactions(); track tx.id) {
+              <tr class="hover:bg-slate-50/50">
+                <td class="py-3 text-slate-500 whitespace-nowrap">
+                  {{ tx.created_at | date:'dd/MM/yyyy HH:mm' }}
+                </td>
+                <td class="py-3 whitespace-nowrap">
+                  @if (tx.type === 'encaissement') {
+                    <span class="px-2 py-0.5 text-[10px] font-bold text-emerald-800 bg-emerald-50 rounded-md">
+                      Encaissement
+                    </span>
+                  } @else {
+                    <span class="px-2 py-0.5 text-[10px] font-bold text-rose-800 bg-rose-50 rounded-md">
+                      Décaissement
+                    </span>
+                  }
+                </td>
+                <td class="py-3 pr-2">
+                  <p class="font-bold text-slate-800">{{ tx.description }}</p>
+                  <p class="text-[11px] text-slate-400 mt-0.5">{{ tx.category }}</p>
+                </td>
+                <td class="py-3 text-right font-bold whitespace-nowrap"
+                    [class.text-emerald-700]="tx.type === 'encaissement'"
+                    [class.text-rose-700]="tx.type === 'decaissement'">
+                  {{ tx.type === 'encaissement' ? '+' : '-' }}{{ formatCurrency(tx.amount) }}
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4" class="py-8 text-center text-slate-400">
+                  Aucune opération de caisse enregistrée.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

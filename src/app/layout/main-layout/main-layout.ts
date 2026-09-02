@@ -42,6 +42,13 @@ export class MainLayout {
       allowedRoles: ['admin', 'rh'],
     },
     {
+      id: 'nav-cashier',
+      label: 'Gestion de Caisse',
+      route: '/caisse',
+      icon: 'account_balance_wallet',
+      allowedRoles: ['admin', 'caissier'],
+    },
+    {
       id: 'nav-users',
       label: 'Utilisateurs & Rôles',
       route: '/admin/users',

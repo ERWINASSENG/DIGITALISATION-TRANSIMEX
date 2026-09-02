@@ -9,6 +9,27 @@ export interface SupabaseConfig {
 
 const SUPABASE_CONFIG_KEY = makeStateKey<SupabaseConfig>('supabase.config');
 
+/**
+ * Adaptateur de stockage volatile en mémoire vive (InMemoryStorage).
+ * Garantit qu'aucun JWT (access_token, refresh_token) n'est écrit sur le disque
+ * ou accessible via window.localStorage (Protection contre l'exfiltration XSS).
+ */
+export class InMemoryStorageAdapter {
+  private readonly storage = new Map<string, string>();
+
+  getItem(key: string): string | null {
+    return this.storage.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string): void {
+    this.storage.set(key, value);
+  }
+
+  removeItem(key: string): void {
+    this.storage.delete(key);
+  }
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -16,6 +37,9 @@ export class SupabaseService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   private readonly transferState = inject(TransferState);
+
+  // Stockage volatile en mémoire vive pour isoler la session Supabase
+  private readonly inMemoryStorage = new InMemoryStorageAdapter();
 
   private client: SupabaseClient | null = null;
   private readonly _isConfigured = signal<boolean>(false);
@@ -27,7 +51,33 @@ export class SupabaseService {
   private initPromise: Promise<boolean> | null = null;
 
   constructor() {
+    this.purgeInsecureStorageTokens();
     this.initSupabaseClient();
+  }
+
+  /**
+   * Purge défensive : supprime tout token JWT résiduel qui aurait pu être
+   * enregistré antérieurement dans le localStorage.
+   */
+  private purgeInsecureStorageTokens(): void {
+    if (!this.isBrowser || typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
+
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('supabase') || key.includes('transmex_session'))) {
+          keysToRemove.push(key);
+        }
+      }
+      for (const k of keysToRemove) {
+        localStorage.removeItem(k);
+      }
+    } catch {
+      // Ignorer si localStorage est restreint
+    }
   }
 
   /**
@@ -124,7 +174,7 @@ export class SupabaseService {
             persistSession: true,
             autoRefreshToken: true,
             detectSessionInUrl: true,
-            storage: this.isBrowser ? localStorage : undefined,
+            storage: this.inMemoryStorage,
           },
         });
       } catch {

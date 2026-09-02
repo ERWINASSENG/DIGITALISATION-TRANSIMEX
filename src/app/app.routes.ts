@@ -65,6 +65,16 @@ export const routes: Routes = [
         title: 'Transmex - Ressources Humaines',
       },
       {
+        path: 'caisse',
+        loadComponent: () =>
+          import('./features/cashier/cashier-management').then(
+            (m) => m.CashierManagementComponent
+          ),
+        canActivate: [roleGuard],
+        data: { roles: ['admin', 'caissier'] },
+        title: 'Transmex - Gestion de Caisse',
+      },
+      {
         path: 'profile',
         loadComponent: () =>
           import('./features/profile/profile').then((m) => m.Profile),

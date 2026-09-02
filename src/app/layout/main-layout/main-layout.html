@@ -12,16 +12,16 @@
     </button>
   }
 
-  <!-- SIDEBAR TRANSIMEX EXACTE (Fidèle à la maquette) -->
+  <!-- SIDEBAR NAVIGATION TRANSIMEX -->
   <aside 
     class="fixed md:sticky top-0 left-0 z-50 h-screen w-64 bg-white border-r border-slate-200/90 flex flex-col justify-between transition-transform duration-300 ease-in-out shrink-0 select-none md:translate-x-0 overflow-y-auto"
     [class.-translate-x-full]="!isSidebarOpen()"
     [class.translate-x-0]="isSidebarOpen()"
     id="app-sidebar">
 
-    <!-- Haut : Logo Transimex & Liens de Navigation -->
+    <!-- Logo & Liens de Navigation -->
     <div class="flex flex-col">
-      <!-- En-tête Logo selon maquette -->
+      <!-- En-tête Logo Transimex -->
       <div class="pt-8 pb-7 px-6 flex flex-col items-center justify-center border-b border-slate-100/80" id="sidebar-logo-container">
         <div class="flex flex-col items-center">
           <h1 class="text-[32px] font-serif font-black tracking-wide text-[#1e3a8a] leading-none uppercase">
@@ -34,7 +34,7 @@
         </div>
       </div>
 
-      <!-- Liens de navigation avec icônes fines -->
+      <!-- Menu de navigation -->
       <nav class="px-3 py-6 space-y-1" id="sidebar-nav-menu">
         @for (item of visibleMenuItems(); track item.id) {
           <a
@@ -55,7 +55,6 @@
 
     <!-- Bas de Sidebar : Carte Utilisateur & Déconnexion -->
     <div class="p-4 border-t border-slate-100/80 space-y-3 shrink-0" id="sidebar-bottom-container">
-      <!-- Carte Utilisateur (fond gris clair, avatar rond, nom, rôle, lien profil accessible) -->
       @if (currentUser(); as user) {
         <a 
           routerLink="/profile"
@@ -93,7 +92,6 @@
         </a>
       }
 
-      <!-- Bouton Déconnexion raffiné et interactif -->
       <button
         type="button"
         (click)="logout()"
@@ -115,17 +113,18 @@
     </div>
   </aside>
 
-  <!-- MAIN VIEWPORT -->
+  <!-- CONTENEUR PRINCIPAL (MAIN VIEWPORT) -->
   <div class="flex-1 flex flex-col min-w-0 overflow-x-hidden min-h-screen">
     
-    <!-- Top Header Bar pour Mobile & Notifications -->
+    <!-- En-tête supérieur minimaliste -->
     <header class="h-16 bg-white border-b border-slate-200/80 sticky top-0 z-30 px-4 sm:px-8 flex items-center justify-between shadow-xs">
       <div class="flex items-center gap-3">
         <button
           type="button"
           (click)="toggleSidebar()"
           class="md:hidden p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-medium flex items-center justify-center"
-          id="toggle-mobile-sidebar-btn">
+          id="toggle-mobile-sidebar-btn"
+          aria-label="Ouvrir le menu latéral">
           <mat-icon class="text-slate-600">menu</mat-icon>
         </button>
 
@@ -136,7 +135,6 @@
         </div>
       </div>
 
-      <!-- Right Header Actions -->
       <div class="flex items-center gap-3">
         @if (currentUser(); as user) {
           <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs">
@@ -147,7 +145,7 @@
       </div>
     </header>
 
-    <!-- Route Content Area -->
+    <!-- Zone principale contenant router-outlet -->
     <main class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto" id="app-main-content">
       <router-outlet></router-outlet>
     </main>
@@ -155,4 +153,5 @@
   </div>
 
 </div>
+
 

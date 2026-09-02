@@ -10,7 +10,26 @@ describe('UsersManagement Component', () => {
     TestBed.configureTestingModule({
       imports: [UsersManagement],
       providers: [
-        UserService,
+        {
+          provide: UserService,
+          useValue: {
+            users: () => [
+              {
+                id: 'usr-1',
+                email: 'amine.k@transmex.com',
+                firstName: 'Amine',
+                lastName: 'Kadri',
+                role: 'agent',
+                department: 'Services Généraux',
+                phone: '+213 555 12 34 56',
+                isActive: true,
+                createdAt: new Date().toISOString(),
+              },
+            ],
+            isLoading: () => false,
+            error: () => null,
+          },
+        },
         {
           provide: SupabaseService,
           useValue: { isConfigured: false, supabase: null },

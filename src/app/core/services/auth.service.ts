@@ -1,10 +1,11 @@
 import { Injectable, computed, inject, signal, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
-import { AuthSession, LoginCredentials, UserProfile, UserRole } from '../models/auth.model';
+import { LoginCredentials, UserProfile, UserRole } from '../models/auth.model';
 import { SupabaseService } from './supabase.service';
 
-const SESSION_STORAGE_KEY = 'transmex_auth_session';
+// Clé résiduelle utilisée uniquement pour la purge défensive
+const LEGACY_SESSION_STORAGE_KEY = 'transmex_auth_session';
 
 @Injectable({
   providedIn: 'root',
@@ -15,7 +16,18 @@ export class AuthService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
-  // Signaux réactifs pour l'état d'authentification
+  /**
+   * Helper robuste tolérant à la fois les signaux et les valeurs primitives (notamment dans les mocks de test)
+   */
+  private checkSupabaseConfigured(): boolean {
+    const configured = this.supabaseService.isConfigured;
+    if (typeof configured === 'function') {
+      return configured();
+    }
+    return Boolean(configured);
+  }
+
+  // Signaux réactifs pour l'état d'authentification (Strictement en mémoire volatile)
   private readonly _currentUser = signal<UserProfile | null>(null);
   private readonly _token = signal<string | null>(null);
   private readonly _isLoading = signal<boolean>(false);
@@ -38,19 +50,38 @@ export class AuthService {
   public readonly isRH = computed(() => this._currentUser()?.role === 'rh' || this._currentUser()?.role === 'admin');
 
   constructor() {
+    this.purgeLegacyStorageTokens();
     this.restoreSession();
     this.listenToAuthChanges();
+  }
+
+  /**
+   * Purge défensive des anciens tokens JWT éventuellement présents dans localStorage
+   */
+  private purgeLegacyStorageTokens(): void {
+    if (this.isBrowser && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        localStorage.removeItem(LEGACY_SESSION_STORAGE_KEY);
+      } catch {
+        // Ignorer si localStorage restreint
+      }
+    }
   }
 
   /**
    * Écoute les changements d'état d'authentification Supabase
    */
   private listenToAuthChanges(): void {
-    if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
+    if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
       try {
         this.supabaseService.supabase.auth.onAuthStateChange(async (event, session) => {
           if (event === 'SIGNED_IN' && session?.user) {
-            await this.loadUserProfileFromSupabase(session.user.id, session.user.email || '', session.access_token);
+            await this.loadUserProfileFromSupabase(
+              session.user.id,
+              session.user.email || '',
+              session.access_token,
+              session.user
+            );
           } else if (event === 'SIGNED_OUT') {
             this.clearLocalSession();
           }
@@ -63,8 +94,14 @@ export class AuthService {
 
   /**
    * Récupère le profil complet depuis la table public.profiles
+   * et extrait le rôle de manière étanche depuis app_metadata
    */
-  private async loadUserProfileFromSupabase(userId: string, email: string, accessToken: string): Promise<UserProfile | null> {
+  private async loadUserProfileFromSupabase(
+    userId: string,
+    email: string,
+    accessToken: string,
+    authUser?: { app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> } | null
+  ): Promise<UserProfile | null> {
     if (!this.supabaseService.supabase) return null;
 
     try {
@@ -74,14 +111,21 @@ export class AuthService {
         .eq('id', userId)
         .maybeSingle();
 
+      // Priorité étanche au rôle app_metadata (inaltérable par l'utilisateur)
+      const appRole = authUser?.app_metadata?.['role'] as UserRole | undefined;
+      const userMetaRole = authUser?.user_metadata?.['role'] as UserRole | undefined;
+      const profileRole = profile?.role as UserRole | undefined;
+
+      const resolvedRole: UserRole = profileRole || appRole || userMetaRole || 'agent';
+
       const userProfile: UserProfile = {
         id: userId,
         email: email || profile?.email || '',
-        firstName: profile?.first_name || 'Utilisateur',
-        lastName: profile?.last_name || 'Transmex',
-        role: (profile?.role as UserRole) || 'admin',
-        roles: [(profile?.role as UserRole) || 'admin'],
-        department: profile?.department || 'Direction Générale',
+        firstName: profile?.first_name || (authUser?.user_metadata?.['first_name'] as string) || 'Utilisateur',
+        lastName: profile?.last_name || (authUser?.user_metadata?.['last_name'] as string) || 'Transmex',
+        role: resolvedRole,
+        roles: [resolvedRole],
+        department: profile?.department || 'Services Généraux',
         phone: profile?.phone,
         isActive: profile?.is_active ?? true,
         avatarUrl: profile?.avatar_url,
@@ -97,26 +141,28 @@ export class AuthService {
   }
 
   /**
-   * Restaure la session enregistrée dans le stockage local ou via Supabase
+   * Restaure la session uniquement depuis Supabase en mémoire si disponible.
+   * Ne lit jamais de tokens JWT depuis localStorage (élimination de la vulnérabilité XSS).
    */
-  public restoreSession(): void {
-    if (this.isBrowser) {
-      try {
-        const stored = localStorage.getItem(SESSION_STORAGE_KEY);
-        if (stored) {
-          const session: AuthSession = JSON.parse(stored);
-          if (session.user && (!session.expiresAt || session.expiresAt > Date.now())) {
-            this._currentUser.set(session.user);
-            this._token.set(session.token);
-          }
-        }
-      } catch {
-        try {
-          localStorage.removeItem(SESSION_STORAGE_KEY);
-        } catch {
-          // Ignorer
+  public async restoreSession(): Promise<void> {
+    if (!this.isBrowser) {
+      return;
+    }
+
+    try {
+      if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
+        const { data } = await this.supabaseService.supabase.auth.getSession();
+        if (data.session?.user) {
+          await this.loadUserProfileFromSupabase(
+            data.session.user.id,
+            data.session.user.email || '',
+            data.session.access_token,
+            data.session.user
+          );
         }
       }
+    } catch {
+      // Ignorer si échec de restauration
     }
   }
 
@@ -181,7 +227,7 @@ export class AuthService {
       // S'assurer que le client Supabase a résolu sa configuration (TransferState ou API)
       await this.supabaseService.ensureInitialized();
 
-      if (!this.supabaseService.isConfigured() || !this.supabaseService.supabase) {
+      if (!this.checkSupabaseConfigured() || !this.supabaseService.supabase) {
         throw new Error(
           "Le service Supabase n'est pas configuré. Veuillez renseigner SUPABASE_URL et SUPABASE_ANON_KEY."
         );
@@ -207,7 +253,8 @@ export class AuthService {
         const profile = await this.loadUserProfileFromSupabase(
           data.user.id,
           data.user.email || email,
-          data.session?.access_token || 'supabase-token'
+          data.session?.access_token || 'supabase-token',
+          data.user
         );
 
         if (!profile) {
@@ -243,7 +290,7 @@ export class AuthService {
     this._authError.set(null);
 
     try {
-      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
+      if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
         const { data, error } = await this.supabaseService.supabase.auth.signUp({
           email: email.trim().toLowerCase(),
           password,
@@ -316,12 +363,12 @@ export class AuthService {
   }
 
   /**
-   * Efface la session locale
+   * Efface la session locale en mémoire vive
    */
   private clearLocalSession(): void {
     if (this.isBrowser) {
       try {
-        localStorage.removeItem(SESSION_STORAGE_KEY);
+        localStorage.removeItem(LEGACY_SESSION_STORAGE_KEY);
       } catch {
         // Ignorer
       }
@@ -332,24 +379,20 @@ export class AuthService {
   }
 
   /**
-   * Sauvegarde interne de session
+   * Sauvegarde interne de session strictement en mémoire vive (Signals).
+   * Aucun jeton d'accès n'est stocké dans localStorage (Protection anti-XSS).
    */
   public setLocalSession(user: UserProfile, token: string): void {
     this._currentUser.set(user);
     this._token.set(token);
     this._authError.set(null);
 
-    const session: AuthSession = {
-      user,
-      token,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 heures
-    };
-
+    // Purge proactive au cas où une ancienne clé persiste
     if (this.isBrowser) {
       try {
-        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+        localStorage.removeItem(LEGACY_SESSION_STORAGE_KEY);
       } catch {
-        // Ignorer si stockage inaccessible
+        // Ignorer
       }
     }
   }

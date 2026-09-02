@@ -20,16 +20,41 @@ describe('UserService', () => {
     });
 
     localStorage.clear();
+    const mockUsers = [
+      {
+        id: 'usr-1',
+        email: 'karim.meziani@transmex.com',
+        firstName: 'Karim',
+        lastName: 'Meziani',
+        role: 'admin',
+        department: 'Direction Générale',
+        phone: '+213 555 12 34 56',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'usr-2',
+        email: 'amina.b@transmex.com',
+        firstName: 'Amina',
+        lastName: 'Brahimi',
+        role: 'rh',
+        department: 'Ressources Humaines',
+        phone: '+213 555 98 76 54',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    localStorage.setItem('transmex_users_store', JSON.stringify(mockUsers));
     service = TestBed.inject(UserService);
   });
 
   it('devrait être instancié avec une liste d\'utilisateurs par défaut', () => {
     expect(service).toBeTruthy();
-    expect(service.users().length).toBeGreaterThan(0);
-    expect(service.totalUsersCount()).toBe(service.users().length);
+    expect(service.users().length).toBe(2);
+    expect(service.totalUsersCount()).toBe(2);
   });
 
-  it('devrait créer un nouvel utilisateur avec succès', async () => {
+  it('devrait créer un nouvel utilisateur avec succès et lui assigner un mot de passe temporaire', async () => {
     const initialCount = service.users().length;
     const result = await service.createUser({
       email: 'nouveau.collaborateur@transmex.com',
@@ -38,6 +63,7 @@ describe('UserService', () => {
       role: 'rh',
       department: 'Ressources Humaines',
       phone: '+213 555 11 22 33',
+      tempPassword: 'Password123!',
     });
 
     expect(result.success).toBe(true);
@@ -47,7 +73,7 @@ describe('UserService', () => {
 
   it('devrait rejeter la création d\'un utilisateur avec un email déjà existant', async () => {
     const result = await service.createUser({
-      email: 'admin@transmex.com',
+      email: 'karim.meziani@transmex.com',
       firstName: 'Doublon',
       lastName: 'Test',
       role: 'agent',

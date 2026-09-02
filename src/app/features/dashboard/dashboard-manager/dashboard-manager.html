@@ -22,7 +22,6 @@
         routerLink="/hr"
         class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition-colors shadow-2xs"
         id="manager-btn-team">
-        <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center text-slate-500">groups</mat-icon>
         <span>Mon Équipe</span>
       </a>
 
@@ -30,7 +29,6 @@
         routerLink="/dashboard"
         class="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1e3a8a] hover:bg-blue-900 text-white text-xs font-semibold rounded-xl transition-colors shadow-xs"
         id="manager-btn-caisse">
-        <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center">fact_check</mat-icon>
         <span>Valider Opérations</span>
       </a>
     </div>
@@ -46,12 +44,8 @@
           <p class="text-xs font-medium text-slate-500">Validations en Attente</p>
           <p class="text-2xl font-bold text-amber-600 mt-1">{{ pendingCount() }} Demandes</p>
         </div>
-        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">assignment_late</mat-icon>
-        </div>
       </div>
       <div class="mt-4 flex items-center gap-1.5 text-[11px] text-amber-700 font-medium">
-        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">priority_high</mat-icon>
         <span>Action requise avant 17h00</span>
       </div>
     </div>
@@ -63,12 +57,8 @@
           <p class="text-xs font-medium text-slate-500">Présences Équipe</p>
           <p class="text-2xl font-bold text-slate-900 mt-1">{{ teamPresentCount() }}/{{ teamTotalCount() }} Présents</p>
         </div>
-        <div class="w-10 h-10 rounded-xl bg-blue-50 text-[#1e3a8a] flex items-center justify-center shrink-0">
-          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">how_to_reg</mat-icon>
-        </div>
       </div>
       <div class="mt-4 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
-        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">check_circle</mat-icon>
         <span>Taux de présence 92%</span>
       </div>
     </div>
@@ -79,9 +69,6 @@
         <div>
           <p class="text-xs font-medium text-slate-500">Dossiers en Traitement</p>
           <p class="text-2xl font-bold text-slate-900 mt-1">28 Dossiers</p>
-        </div>
-        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">inventory_2</mat-icon>
         </div>
       </div>
       <div class="mt-4 flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -97,12 +84,8 @@
           <p class="text-xs font-medium text-slate-500">Conformité Délais (SLA)</p>
           <p class="text-2xl font-bold text-slate-900 mt-1">96.8%</p>
         </div>
-        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-          <mat-icon class="text-[20px] w-5 h-5 flex items-center justify-center">speed</mat-icon>
-        </div>
       </div>
       <div class="mt-4 flex items-center gap-1.5 text-[11px] text-emerald-700 font-medium">
-        <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">trending_up</mat-icon>
         <span>Excellente ponctualité</span>
       </div>
     </div>
@@ -127,16 +110,6 @@
         @for (req of pendingRequests(); track req.id) {
           <div class="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50 p-2 rounded-xl transition-colors">
             <div class="flex items-start gap-3">
-              <div 
-                class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
-                [class.bg-blue-50]="req.type === 'caisse'"
-                [class.text-blue-700]="req.type === 'caisse'"
-                [class.bg-emerald-50]="req.type === 'conge'"
-                [class.text-emerald-700]="req.type === 'conge'"
-                [class.bg-amber-50]="req.type === 'logistique'"
-                [class.text-amber-700]="req.type === 'logistique'">
-                <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center">{{ req.icon }}</mat-icon>
-              </div>
               <div>
                 <p class="text-xs font-bold text-slate-900">{{ req.title }}</p>
                 <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 mt-0.5">
@@ -164,17 +137,14 @@
                   (click)="approveRequest(req.id)"
                   class="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-2xs transition-colors inline-flex items-center gap-1"
                   title="Approuver">
-                  <mat-icon class="text-[16px] w-4 h-4 flex items-center justify-center">check</mat-icon>
                   <span>Approuver</span>
                 </button>
               } @else if (req.status === 'approved') {
                 <span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                  <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">done_all</mat-icon>
                   Approuvé
                 </span>
               } @else {
                 <span class="inline-flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 px-2.5 py-1 rounded-lg border border-red-200">
-                  <mat-icon class="text-[14px] w-3.5 h-3.5 flex items-center justify-center">close</mat-icon>
                   Rejeté
                 </span>
               }
@@ -194,14 +164,6 @@
       <div class="space-y-3">
         @for (alert of alerts(); track alert.id) {
           <div class="p-3 rounded-xl border border-slate-100 bg-slate-50/50 flex items-start gap-3 text-xs">
-            <div 
-              class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-              [class.bg-amber-100]="alert.severity === 'warning'"
-              [class.text-amber-800]="alert.severity === 'warning'"
-              [class.bg-blue-100]="alert.severity === 'info'"
-              [class.text-blue-800]="alert.severity === 'info'">
-              <mat-icon class="text-[16px] w-4 h-4 flex items-center justify-center">{{ alert.icon }}</mat-icon>
-            </div>
             <div>
               <p class="font-bold text-slate-800">{{ alert.title }}</p>
               <p class="text-slate-500 text-[11px] mt-0.5 leading-snug">{{ alert.message }}</p>
@@ -214,7 +176,6 @@
         <a 
           routerLink="/dashboard" 
           class="w-full inline-flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition-colors">
-          <mat-icon class="text-[18px] w-4.5 h-4.5 flex items-center justify-center text-slate-500">receipt_long</mat-icon>
           <span>Historique des flux de caisse</span>
         </a>
       </div>

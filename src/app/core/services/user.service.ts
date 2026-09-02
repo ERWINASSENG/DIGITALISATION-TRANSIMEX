@@ -14,6 +14,14 @@ export class UserService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
+  private checkSupabaseConfigured(): boolean {
+    const configured = this.supabaseService.isConfigured;
+    if (typeof configured === 'function') {
+      return configured();
+    }
+    return Boolean(configured);
+  }
+
   private readonly _users = signal<UserProfile[]>([]);
   private readonly _isLoading = signal<boolean>(false);
   private readonly _error = signal<string | null>(null);
@@ -40,7 +48,50 @@ export class UserService {
     this._error.set(null);
 
     try {
-      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
+      // 1. Tenter l'appel à l'API sécurisée /api/system/collaborators avec le Bearer token admin
+      if (this.isBrowser) {
+        try {
+          let authToken = '';
+          if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
+            const { data: sessionData } = await this.supabaseService.supabase.auth.getSession();
+            authToken = sessionData.session?.access_token || '';
+          }
+
+          const headers: Record<string, string> = {};
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+
+          const res = await fetch('/api/system/collaborators', { method: 'GET', headers });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.users && Array.isArray(data.users)) {
+              const mapped: UserProfile[] = data.users.map((row: UserProfile) => ({
+                id: row.id,
+                email: row.email,
+                firstName: row.firstName || 'Utilisateur',
+                lastName: row.lastName || 'Transmex',
+                role: (row.role as UserRole) || 'agent',
+                department: row.department || 'Services Généraux',
+                phone: row.phone,
+                isActive: row.isActive ?? true,
+                avatarUrl: row.avatarUrl,
+                createdAt: row.createdAt || new Date().toISOString(),
+                lastLoginAt: row.lastLoginAt,
+              }));
+
+              this._users.set(mapped);
+              this.saveToStorage(mapped);
+              this._isLoading.set(false);
+              return;
+            }
+          }
+        } catch {
+          // Ignorer et passer aux modes de secours
+        }
+      }
+
+      if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
         const { data, error } = await this.supabaseService.supabase
           .from('profiles')
           .select('*')
@@ -72,31 +123,10 @@ export class UserService {
         }
       }
 
-      // Mode Local / Persistance locale : ne conserver que les utilisateurs réels
+      // En cas d'absence de données Supabase, vider le stockage local et initialiser à vide
       if (this.isBrowser) {
-        const stored = localStorage.getItem(USERS_STORAGE_KEY);
-        if (stored) {
-          try {
-            const parsed: UserProfile[] = JSON.parse(stored);
-            // Filtrer pour éliminer automatiquement tout ancien compte de démo résiduel
-            const demoEmails = ['admin@transmex.com', 'rh@transmex.com', 'stock@transmex.com', 'caisse@transmex.com', 'agent@transmex.com'];
-            const cleanList = parsed.filter((u) => !demoEmails.includes(u.email.toLowerCase()));
-            
-            // Si des faux comptes étaient présents, réécrire le stockage propre
-            if (cleanList.length !== parsed.length) {
-              this.saveToStorage(cleanList);
-            }
-            
-            this._users.set(cleanList);
-            this._isLoading.set(false);
-            return;
-          } catch {
-            this.clearAllUsers();
-          }
-        }
+        localStorage.removeItem(USERS_STORAGE_KEY);
       }
-
-      // Liste vide par défaut (aucune donnée de démonstration)
       this._users.set([]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur lors du chargement des utilisateurs';
@@ -108,7 +138,7 @@ export class UserService {
   }
 
   /**
-   * Crée un nouvel utilisateur avec attribution de rôle
+   * Crée un nouvel utilisateur avec attribution de rôle et compte Supabase Auth
    */
   public async createUser(payload: CreateUserPayload): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
     this._isLoading.set(true);
@@ -117,12 +147,84 @@ export class UserService {
     try {
       const email = payload.email.trim().toLowerCase();
 
-      // Vérifier si l'email existe déjà
+      // Vérifier si l'email existe déjà dans la liste locale
       const exists = this._users().some((u) => u.email.toLowerCase() === email);
       if (exists) {
         throw new Error(`Un utilisateur avec l'adresse email ${email} existe déjà.`);
       }
 
+      const password = payload.tempPassword?.trim() || 'Transmex@' + Math.floor(1000 + Math.random() * 9000);
+
+      // 1. Tenter la création via l'API sécurisée d'administration (/api/system/collaborators)
+      if (this.isBrowser) {
+        try {
+          let authToken = '';
+          if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
+            const { data: sessionData } = await this.supabaseService.supabase.auth.getSession();
+            authToken = sessionData.session?.access_token || '';
+          }
+
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+          };
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+
+          const displayName = `${payload.firstName.trim()} ${payload.lastName.trim()}`.trim();
+
+          const res = await fetch('/api/system/collaborators', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              email,
+              password,
+              firstName: payload.firstName.trim(),
+              lastName: payload.lastName.trim(),
+              displayName,
+              role: payload.role,
+              department: payload.department?.trim() || 'Services Généraux',
+              phone: payload.phone?.trim() || '',
+              isActive: true,
+            }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data?.error || 'Erreur lors de la création du compte');
+          }
+
+          if (data?.user) {
+            const newUser: UserProfile = {
+              id: data.user.id,
+              email: data.user.email,
+              firstName: data.user.firstName,
+              lastName: data.user.lastName,
+              role: data.user.role,
+              roles: [data.user.role],
+              department: data.user.department,
+              phone: data.user.phone,
+              isActive: data.user.isActive ?? true,
+              createdAt: data.user.createdAt || new Date().toISOString(),
+            };
+
+            const updatedList = [newUser, ...this._users()];
+            this._users.set(updatedList);
+            this.saveToStorage(updatedList);
+            this._isLoading.set(false);
+
+            return { success: true, user: newUser };
+          }
+        } catch (apiErr: unknown) {
+          // Si le serveur a rejeté explicitement (ex: email déjà pris dans auth.users)
+          if (apiErr instanceof Error && !apiErr.message.includes('Failed to fetch') && !apiErr.message.includes('NetworkError')) {
+            throw apiErr;
+          }
+          // En cas de test unitaire ou d'indisponibilité de l'endpoint SSR, bascule en mode client direct
+        }
+      }
+
+      // 2. Fallback mode client direct
       const newId = generateSecureUUID();
       const newUser: UserProfile = {
         id: newId,
@@ -137,8 +239,8 @@ export class UserService {
         createdAt: new Date().toISOString(),
       };
 
-      // Si Supabase est actif, enregistrer dans la table profiles
-      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
+      // Si Supabase est actif côté client, insérer dans la table profiles
+      if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
         await this.supabaseService.supabase.from('profiles').insert({
           id: newId,
           email: newUser.email,
@@ -174,7 +276,30 @@ export class UserService {
     this._error.set(null);
 
     try {
-      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
+      if (this.isBrowser) {
+        try {
+          let authToken = '';
+          if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
+            const { data: sessionData } = await this.supabaseService.supabase.auth.getSession();
+            authToken = sessionData.session?.access_token || '';
+          }
+
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+
+          await fetch(`/api/system/collaborators/${id}`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(payload),
+          });
+        } catch {
+          // Ignorer et basculer en mode client direct
+        }
+      }
+
+      if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
         const updateData: Record<string, unknown> = {};
         if (payload.firstName !== undefined) updateData['first_name'] = payload.firstName;
         if (payload.lastName !== undefined) updateData['last_name'] = payload.lastName;
@@ -227,12 +352,31 @@ export class UserService {
   }
 
   /**
-   * Supprime un utilisateur
+   * Supprime un collaborateur de l'authentification et de la table des profils
    */
   public async deleteUser(id: string): Promise<{ success: boolean; error?: string }> {
     this._isLoading.set(true);
     try {
-      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
+      if (this.isBrowser) {
+        try {
+          let authToken = '';
+          if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
+            const { data: sessionData } = await this.supabaseService.supabase.auth.getSession();
+            authToken = sessionData.session?.access_token || '';
+          }
+
+          const headers: Record<string, string> = {};
+          if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+          }
+
+          await fetch(`/api/system/collaborators/${id}`, { method: 'DELETE', headers });
+        } catch {
+          // Si endpoint indisponible (mode test), continuer
+        }
+      }
+
+      if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
         await this.supabaseService.supabase.from('profiles').delete().eq('id', id);
       }
 
