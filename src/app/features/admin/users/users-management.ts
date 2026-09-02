@@ -3,6 +3,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { SlicePipe } from '@angular/common';
 import { ROLE_DEFINITIONS, UserProfile, UserRole } from '../../../core/models/auth.model';
 import { UserService } from '../../../core/services/user.service';
+import { generateSecurePassword } from '../../../core/utils/crypto.utils';
 
 @Component({
   selector: 'app-users-management',
@@ -46,7 +47,7 @@ export class UsersManagement {
     }),
     department: new FormControl<string>('Exploitation', { nonNullable: true }),
     phone: new FormControl<string>('', { nonNullable: true }),
-    tempPassword: new FormControl<string>('transmex2025', { nonNullable: true }),
+    tempPassword: new FormControl<string>(generateSecurePassword(16), { nonNullable: true }),
     sendInviteEmail: new FormControl<boolean>(true, { nonNullable: true }),
   });
 
@@ -83,7 +84,7 @@ export class UsersManagement {
       role: 'agent',
       department: 'Services Transmex',
       phone: '',
-      tempPassword: 'transmex' + Math.floor(1000 + Math.random() * 9000),
+      tempPassword: generateSecurePassword(16),
       sendInviteEmail: true,
     });
     this.isModalOpen.set(true);

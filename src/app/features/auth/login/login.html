@@ -10,9 +10,6 @@
     <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-white uppercase" id="brand-title">
       PORTAIL TRANSMEX
     </h1>
-    <p class="mt-2 text-sm text-slate-400" id="brand-subtitle">
-      Système d'authentification et de gestion centralisée des services
-    </p>
   </div>
 
   <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4 sm:px-0">
@@ -107,15 +104,6 @@
           }
         </button>
       </form>
-
-      <!-- Badge statut Supabase -->
-      <div class="mt-6 pt-5 border-t border-slate-700/50 flex items-center justify-between text-xs text-slate-400" id="login-footer-info">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full" [class]="isSupabaseConfigured() ? 'bg-emerald-400' : 'bg-slate-500'"></span>
-          <span>{{ isSupabaseConfigured() ? 'Supabase Auth Connecté' : 'Authentification Sécurisée' }}</span>
-        </div>
-        <span class="text-[11px] text-slate-500">Transmex System</span>
-      </div>
 
     </div>
   </div>

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal, PLATFORM_ID } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import { CreateUserPayload, UpdateUserPayload, UserProfile, UserRole } from '../models/auth.model';
 import { SupabaseService } from './supabase.service';
+import { generateSecureUUID } from '../utils/crypto.utils';
 
 const USERS_STORAGE_KEY = 'transmex_users_store';
 
@@ -122,7 +123,7 @@ export class UserService {
         throw new Error(`Un utilisateur avec l'adresse email ${email} existe déjà.`);
       }
 
-      const newId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const newId = generateSecureUUID();
       const newUser: UserProfile = {
         id: newId,
         email,

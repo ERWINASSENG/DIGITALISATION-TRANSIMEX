@@ -21,6 +21,11 @@ export class AuthService {
   private readonly _isLoading = signal<boolean>(false);
   private readonly _authError = signal<string | null>(null);
 
+  // Protection contre les attaques par force brute
+  private readonly loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
+  private readonly LOGIN_ATTEMPT_LIMIT = 5;
+  private readonly LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes de verrouillage
+
   // Signaux publics dérivés
   public readonly currentUser = this._currentUser.asReadonly();
   public readonly token = this._token.asReadonly();
@@ -116,7 +121,45 @@ export class AuthService {
   }
 
   /**
-   * Connexion par email et mot de passe
+   * Vérifie les quotas de tentatives de connexion pour limiter les attaques par force brute
+   */
+  private checkRateLimit(email: string): { allowed: boolean; remainingMinutes?: number } {
+    const now = Date.now();
+    const record = this.loginAttempts.get(email);
+
+    if (!record) {
+      return { allowed: true };
+    }
+
+    if (now - record.lastAttempt > this.LOGIN_LOCKOUT_MS) {
+      this.loginAttempts.delete(email);
+      return { allowed: true };
+    }
+
+    if (record.count >= this.LOGIN_ATTEMPT_LIMIT) {
+      const remainingMinutes = Math.ceil((this.LOGIN_LOCKOUT_MS - (now - record.lastAttempt)) / 60000);
+      return { allowed: false, remainingMinutes };
+    }
+
+    return { allowed: true };
+  }
+
+  private recordFailedAttempt(email: string): void {
+    const now = Date.now();
+    const record = this.loginAttempts.get(email);
+    if (!record || now - record.lastAttempt > this.LOGIN_LOCKOUT_MS) {
+      this.loginAttempts.set(email, { count: 1, lastAttempt: now });
+    } else {
+      this.loginAttempts.set(email, { count: record.count + 1, lastAttempt: now });
+    }
+  }
+
+  private resetLoginAttempts(email: string): void {
+    this.loginAttempts.delete(email);
+  }
+
+  /**
+   * Connexion sécurisée par email et mot de passe via Supabase Auth
    */
   public async login(credentials: LoginCredentials): Promise<{ success: boolean; error?: string }> {
     this._isLoading.set(true);
@@ -125,88 +168,65 @@ export class AuthService {
     const email = credentials.email.trim().toLowerCase();
     const password = credentials.password;
 
-    try {
-      // 1. Authentification via Supabase si configuré
-      if (this.supabaseService.isConfigured() && this.supabaseService.supabase) {
-        const { data, error } = await this.supabaseService.supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          // Message d'erreur utilisateur traduit et explicite
-          let friendlyError = error.message;
-          if (error.message.includes('Invalid login credentials')) {
-            friendlyError = 'Identifiants invalides : email ou mot de passe incorrect.';
-          } else if (error.message.includes('Email not confirmed')) {
-            friendlyError = "L'adresse email n'a pas encore été confirmée dans Supabase.";
-          }
-          throw new Error(friendlyError);
-        }
-
-        if (data.user) {
-          const profile = await this.loadUserProfileFromSupabase(
-            data.user.id,
-            data.user.email || email,
-            data.session?.access_token || 'supabase-token'
-          );
-
-          if (profile) {
-            this._isLoading.set(false);
-            this.redirectAfterLogin();
-            return { success: true };
-          }
-        }
-      }
-
-      // 2. Vérification dans le stockage local ou compte d'administration initial
-      if (this.isBrowser) {
-        // Reconnaissance immédiate de l'administrateur par défaut
-        if (email === 'erwinalberic99@gmail.com' && password === 'Asseng12@') {
-          const adminUser: UserProfile = {
-            id: 'admin_erwin_001',
-            email: 'erwinalberic99@gmail.com',
-            firstName: 'Erwin',
-            lastName: 'Alberic',
-            role: 'admin',
-            roles: ['admin'],
-            department: 'Direction Générale',
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            lastLoginAt: new Date().toISOString(),
-          };
-
-          this.setLocalSession(adminUser, 'admin-transmex-token');
-          this._isLoading.set(false);
-          this.redirectAfterLogin();
-          return { success: true };
-        }
-
-        const storedUsersStr = localStorage.getItem('transmex_users_store');
-        if (storedUsersStr) {
-          try {
-            const users: UserProfile[] = JSON.parse(storedUsersStr);
-            const user = users.find((u) => u.email.toLowerCase() === email && u.isActive);
-            if (user) {
-              const updatedUser: UserProfile = {
-                ...user,
-                lastLoginAt: new Date().toISOString(),
-              };
-              this.setLocalSession(updatedUser, `session-token-${user.id}`);
-              this._isLoading.set(false);
-              this.redirectAfterLogin();
-              return { success: true };
-            }
-          } catch {
-            // Ignorer
-          }
-        }
-      }
-
-      const errorMessage = 'Identifiants invalides ou compte introuvable.';
-      this._authError.set(errorMessage);
+    // Protection anti force-brute
+    const rateLimit = this.checkRateLimit(email);
+    if (!rateLimit.allowed) {
+      const errorMsg = `Trop de tentatives échouées pour ce compte. Veuillez patienter ${rateLimit.remainingMinutes} minute(s) avant de réessayer.`;
+      this._authError.set(errorMsg);
       this._isLoading.set(false);
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMsg };
+    }
+
+    try {
+      // S'assurer que le client Supabase a résolu sa configuration (TransferState ou API)
+      await this.supabaseService.ensureInitialized();
+
+      if (!this.supabaseService.isConfigured() || !this.supabaseService.supabase) {
+        throw new Error(
+          "Le service Supabase n'est pas configuré. Veuillez renseigner SUPABASE_URL et SUPABASE_ANON_KEY."
+        );
+      }
+
+      const { data, error } = await this.supabaseService.supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        this.recordFailedAttempt(email);
+        let friendlyError = error.message;
+        if (error.message.includes('Invalid login credentials')) {
+          friendlyError = 'Identifiants invalides : email ou mot de passe incorrect.';
+        } else if (error.message.includes('Email not confirmed')) {
+          friendlyError = "L'adresse email n'a pas encore été confirmée dans Supabase.";
+        }
+        throw new Error(friendlyError);
+      }
+
+      if (data.user) {
+        const profile = await this.loadUserProfileFromSupabase(
+          data.user.id,
+          data.user.email || email,
+          data.session?.access_token || 'supabase-token'
+        );
+
+        if (!profile) {
+          throw new Error('Profil utilisateur introuvable dans la base de données.');
+        }
+
+        if (!profile.isActive) {
+          await this.supabaseService.supabase.auth.signOut();
+          this.clearLocalSession();
+          throw new Error('Ce compte utilisateur a été désactivé. Veuillez contacter un administrateur.');
+        }
+
+        this.resetLoginAttempts(email);
+        this._isLoading.set(false);
+        this.redirectAfterLogin();
+        return { success: true };
+      }
+
+      throw new Error('Identifiants invalides ou échec de connexion.');
     } catch (err: unknown) {
       const errMessage = err instanceof Error ? err.message : 'Une erreur est survenue lors de la connexion';
       this._authError.set(errMessage);

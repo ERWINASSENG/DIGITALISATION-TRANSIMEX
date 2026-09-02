@@ -13,6 +13,15 @@ const app = express();
 const angularApp = new AngularNodeAppEngine();
 
 /**
+ * Endpoint sécurisé fournissant l'URL et la clé anonyme publiques Supabase au client web.
+ */
+app.get('/api/supabase-config', (_req, res) => {
+  const url = process.env['SUPABASE_URL'] || '';
+  const anonKey = process.env['SUPABASE_ANON_KEY'] || '';
+  res.json({ url, anonKey });
+});
+
+/**
  * Example Express Rest API endpoints can be defined here.
  * Uncomment and define endpoints as necessary.
  *
