@@ -7,6 +7,10 @@ import {
 import express from 'express';
 import {join} from 'node:path';
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+
+// Charger les variables d'environnement depuis le fichier `.env` (si présent)
+dotenv.config();
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
