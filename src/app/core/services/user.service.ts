@@ -102,7 +102,7 @@ export class UserService {
         }
 
         if (data) {
-          const mapped: UserProfile[] = data.map((row) => ({
+          const mapped: UserProfile[] = data.map((row: any) => ({
             id: row.id,
             email: row.email,
             firstName: row.first_name || 'Utilisateur',

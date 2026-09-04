@@ -74,7 +74,7 @@ export class AuthService {
   private listenToAuthChanges(): void {
     if (this.checkSupabaseConfigured() && this.supabaseService.supabase) {
       try {
-        this.supabaseService.supabase.auth.onAuthStateChange(async (event, session) => {
+        this.supabaseService.supabase.auth.onAuthStateChange(async (event: string, session: any) => {
           if (event === 'SIGNED_IN' && session?.user) {
             await this.loadUserProfileFromSupabase(
               session.user.id,

@@ -213,7 +213,7 @@ export class SupabaseService {
   /**
    * Retourne l'instance du client Supabase
    */
-  get supabase(): SupabaseClient | null {
+  get supabase(): any | null {
     return this.client;
   }
 }
