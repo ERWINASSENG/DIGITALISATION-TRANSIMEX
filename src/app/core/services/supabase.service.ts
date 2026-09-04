@@ -1,6 +1,5 @@
 import { Injectable, PLATFORM_ID, inject, signal, makeStateKey, TransferState } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface SupabaseConfig {
   url: string;
@@ -41,7 +40,8 @@ export class SupabaseService {
   // Stockage volatile en mémoire vive pour isoler la session Supabase
   private readonly inMemoryStorage = new InMemoryStorageAdapter();
 
-  private client: SupabaseClient | null = null;
+  // `supabase-js` is imported dynamically to avoid bundling it into the initial client-side bundle.
+  private client: any | null = null;
   private readonly _isConfigured = signal<boolean>(false);
   private readonly _supabaseUrl = signal<string>('');
 
@@ -140,6 +140,10 @@ export class SupabaseService {
           const config: SupabaseConfig = await response.json();
           if (config.url && config.anonKey) {
             this.applyConfig(config.url, config.anonKey);
+            // Si la configuration est valide, initialiser dynamiquement le client
+            if (this._isConfigured()) {
+              await this.initClientDynamic(config.url, config.anonKey);
+            }
             return this._isConfigured();
           }
         }
@@ -168,21 +172,32 @@ export class SupabaseService {
     this._supabaseUrl.set(url);
 
     if (isValid) {
-      try {
-        this.client = createClient(url, key, {
-          auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-            storage: this.inMemoryStorage,
-          },
-        });
-      } catch {
+      // Démarrer l'initialisation asynchrone du client (ne bloque pas l'appel synchrone)
+      this.initClientDynamic(url, key).catch(() => {
         this.client = null;
         this._isConfigured.set(false);
-      }
+      });
     } else {
       this.client = null;
+    }
+  }
+
+  private async initClientDynamic(url: string, key: string): Promise<void> {
+    if (this.client) return;
+    try {
+      const mod = await import('@supabase/supabase-js');
+      const createClient = mod.createClient as any;
+      this.client = createClient(url, key, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storage: this.inMemoryStorage,
+        },
+      });
+    } catch {
+      this.client = null;
+      throw new Error('Impossible de charger dynamiquement supabase-js');
     }
   }
 
