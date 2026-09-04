@@ -37,7 +37,7 @@ export const routes: Routes = [
   // Routes protégées sous le Layout Principal Transmex
   {
     path: '',
-    component: MainLayout,
+    loadComponent: () => import('./layout/main-layout/main-layout').then((m) => m.MainLayout),
     canActivate: [authGuard],
     children: [
       {
